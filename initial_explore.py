@@ -5,6 +5,9 @@ from fsspec import filesystem
 from h5py import File
 from pynwb import NWBHDF5IO
 import matplotlib.pyplot as plt
+import h5py
+import numpy as np
+
 
 dandiset_id = "000410"
 file_path   = "sub-Jaq/sub-Jaq_ses-jaq-01_behavior+ecephys.nwb" # file size ~67GB
@@ -25,15 +28,25 @@ io = NWBHDF5IO(file=file, load_namespaces=True)
 
 nwbfile = io.read()
 # %%
-import h5py
+
 data = nwbfile.acquisition['e-series'].data
 
 # load the hdf5 file
 f = h5py.File(file_system, 'r')
-
 with h5py.File(file_system, 'r') as f:
-    subset = f['acquisition']['e-series']['data'][:10000, :]
+    print(list(f.keys()))
+    #print(f['processing']['behavior'].keys())
+    position = f['processing']['behavior']['position']['series_3']
+    plt.plot(position['data'])
+    #plt.plot(position['series_2']['data'][:,0])
+    #print(f['general']['extracellular_ephys'].keys())
+    #print(f['intervals']['epochs'].keys())
+    #start = f['intervals']['epochs']['start_time']
+    #print(np.array(start))
+    #subset = f['acquisition']['e-series']['data'][:10000, :]
 
+
+# notes
 
 #%%
 fig, ax = plt.subplots(1,1, figsize=(10,5))
