@@ -1,5 +1,4 @@
 #%%
-
 from dandi.dandiapi import DandiAPIClient
 from fsspec.implementations.cached import CachingFileSystem
 from fsspec import filesystem
@@ -13,8 +12,44 @@ from scipy.signal import decimate
 from utils import load_nwbfile
 
 dandiset_id = "000019"
-file_path   = 'sub-EC2/sub-EC2_ses-EC2-B1.nwb'
+file_path   = 'sub-EC2/sub-EC2_ses-EC2-B105.nwb'
 nwbfile     = load_nwbfile(dandiset_id,file_path)
+
+
+
+#%%
+# Identify bad channels
+electrodes   = nwbfile.electrodes.to_dataframe()
+bad_indicies = np.where(electrodes['bad'] == True)
+
+lfp = nwbfile.acquisition['ElectricalSeries'].data[:30_000,:].T
+
+# find chanel outlier based on zscore
+def zscore(data):
+    return (data - np.mean(data)) / np.std(data)
+
+
+zscore_data  = zscore(lfp)
+zscore_data  = np.nanmean(zscore_data, axis=1)
+zscore_data  = np.abs(zscore_data)
+bad_indicies = np.where(zscore_data > 3)[0]
+
+# make bad channels nan
+lfp[bad_indicies,:] = np.nan
+
+
+# make grid data
+lfp = lfp.reshape(16,16,-1)
+
+
+
+
+
+
+
+
+
+
 
 #%%
 lfp = nwbfile.acquisition['ElectricalSeries'].data[:30000,:].T
@@ -50,9 +85,6 @@ def bandpass_filter_3d(array_3d, lowcut, highcut, fs, order=2):
     return filtered_data
 
 
-def zscore(data):
-    return (data - np.mean(data)) / np.std(data)
-
 
 def zscore_3d(array_3d):
     zscore_data = np.empty_like(array_3d)
@@ -72,12 +104,14 @@ lfp = bandpass_filter_3d(lfp, 8, 12, fs)
 
 plt.plot(lfp[0,0,:])
 
+#%%
 electrodes = nwbfile.electrodes.to_dataframe()
 
 # plot the x and y coordinates of the electrodes as scatter
-plt.scatter(electrodes.x, electrodes.y, s=1)
-plt.scatter(electrodes.x[0], electrodes.y[0], s=10)
+plt.scatter(electrodes.y, electrodes.z, s=1)
+plt.scatter(electrodes.y[16], electrodes.z[16], s=10)
 
+#%%
 
 # %%
 import numpy as np

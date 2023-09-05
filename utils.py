@@ -10,6 +10,8 @@ import pandas as pd
 from scipy.signal import decimate
 
 
+
+#___________ io tools ___________
 def load_nwbfile(dandiset_id,file_path):
     # add comment
     with DandiAPIClient() as client:
@@ -23,3 +25,10 @@ def load_nwbfile(dandiset_id,file_path):
     io          = NWBHDF5IO(file=file, load_namespaces=True)
     nwbfile     = io.read()
     return nwbfile
+
+
+#___________ signal processing tools ___________
+def zscore(data):
+    return (data - np.mean(data)) / np.std(data)
+
+
