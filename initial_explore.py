@@ -7,17 +7,16 @@ from pynwb import NWBHDF5IO
 import matplotlib.pyplot as plt
 import h5py
 import numpy as np
+import pandas as pd
+from scipy.signal import decimate
 
-
+sub         = 'Roqui'
 dandiset_id = "000410"
-file_path   = "sub-Jaq/sub-Jaq_ses-jaq-01_behavior+ecephys.nwb" # file size ~67GB
-#sub-Jaq/sub-Jaq_ses-Jaq-01_behavior+ecephys.nwb
-
+file_path   = f"sub-{sub}/sub-{sub}_ses-{sub}-01_behavior+ecephys.nwb" 
 # Get the location of the file on DANDI
 with DandiAPIClient() as client:
     asset = client.get_dandiset(dandiset_id, 'draft').get_asset_by_path(file_path)
     s3_url = asset.get_content_url(follow_redirects=1, strip_query=True)
-
 
 # Create a virtual filesystem based on the http protocol and use caching to save accessed data to RAM.
 fs = filesystem("http")
@@ -27,26 +26,89 @@ file = File(file_system, mode="r")
 io = NWBHDF5IO(file=file, load_namespaces=True)
 
 nwbfile = io.read()
-# %%
 
-data = nwbfile.acquisition['e-series'].data
 
-# load the hdf5 file
+#%%
+# get the timestaps:
+times   = nwbfile.epochs.to_dataframe()
+series1 = times.iloc[2].stop_time - times.iloc[2].start_time
+print(series1)
+
+# notes
+#%%
 f = h5py.File(file_system, 'r')
-with h5py.File(file_system, 'r') as f:
-    print(list(f.keys()))
-    #print(f['processing']['behavior'].keys())
-    position = f['processing']['behavior']['position']['series_3']
-    plt.plot(position['data'])
-    #plt.plot(position['series_2']['data'][:,0])
-    #print(f['general']['extracellular_ephys'].keys())
-    #print(f['intervals']['epochs'].keys())
-    #start = f['intervals']['epochs']['start_time']
-    #print(np.array(start))
-    #subset = f['acquisition']['e-series']['data'][:10000, :]
+#print(f.keys())
+#print(f['intervals']['epochs'].keys())
+print(f['processing'].keys())
+
+#%%
+
+
+
+start_times         = np.array(f['intervals']['epochs']['start_time'])
+end_times           = np.array(f['intervals']['epochs']['stop_time'])
+session_description = f['session_description']
+
+lfp            = f['acquisition']['e-series']['data']
+lfp_timestamps = f['acquisition']['e-series']['timestamps']
+
+
+# Decimate data to 1kHz
+temp = lfp[:300000,0]
+temp = decimate(temp, 29, axis=0) 
+
+# Run FFT and get power spectrum
+fft_vals = np.fft.fft(temp)
+power_spectrum = np.abs(fft_vals[:len(temp)//2])**2 / len(temp) * 2
+
+# Get frequency bins for plotting
+freq_bins = np.fft.fftfreq(len(temp), 1/1000.)[:len(temp)//2]
+
+# Select frequency range, e.g., 0-20Hz (or whichever range you desire)
+mask = (freq_bins >= 0) & (freq_bins <= 100)
+
+# Plot power spectrum within desired frequency range
+plt.plot(freq_bins[mask], power_spectrum[mask])
+plt.xlim(0, 100)
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Power")
+plt.show()
+
+
+#%%
+
+stamps = np.array(lfp_timestamps[60_000_000:80_000_000])
+plt.plot(np.abs(stamps - start_times[2]))
+
+
+#%%
+
+
+
+print(lfp.shape)
+
+#for beg,end in zip(start_times,end_times):
+#    # find beg indx in lfp_timestamps
+#    beg_idx = np.where(lfp_timestamps == beg)[0][0]
+#    end_idx = np.where(lfp_timestamps == end)[0][-1]
+
+
+#sample_count = f['processing']['sample_count']['sample_count']['data']
+#position = f['processing']['behavior']['position']['series_3']['data']
+
+#plt.plot(sample_count[:100000])
+#plt.plot(sample_count[:])
+#analog_data = f['processing']['analog']['analog']['analog']['data']
 
 
 # notes
+#f['specifications'] is not important
+#f['session_start_time] is empty
+#  f['processing']['analog']['analog']['analog']['data'] is empty/just zero
+# sample count not sure
+# f['session_description'] is empty
+
+
 
 #%%
 fig, ax = plt.subplots(1,1, figsize=(10,5))
