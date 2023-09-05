@@ -12,10 +12,10 @@ from scipy.signal import decimate
 from utils import load_nwbfile
 
 dandiset_id = "000019"
-file_path   = 'sub-EC2/sub-EC2_ses-EC2-B105.nwb'
+file_path   = 'sub-EC2/sub-EC2_ses-EC2-B89.nwb'
 nwbfile     = load_nwbfile(dandiset_id,file_path)
 
-
+nwbfile.epochs.to_dataframe()
 
 #%%
 # Identify bad channels
@@ -23,6 +23,14 @@ electrodes   = nwbfile.electrodes.to_dataframe()
 bad_indicies = np.where(electrodes['bad'] == True)
 
 lfp = nwbfile.acquisition['ElectricalSeries'].data[:30_000,:].T
+
+# get the trial strucutre
+trials = nwbfile.trials.to_dataframe()
+
+# the trial begings at start_time and ends at stop_time in seconds
+
+
+# get the sam
 
 # find chanel outlier based on zscore
 def zscore(data):
