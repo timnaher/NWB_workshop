@@ -1,4 +1,5 @@
 #%%
+
 from dandi.dandiapi import DandiAPIClient
 from fsspec.implementations.cached import CachingFileSystem
 from fsspec import filesystem
@@ -9,27 +10,14 @@ import h5py
 import numpy as np
 import pandas as pd
 from scipy.signal import decimate
+from utils import load_nwbfile
 
 dandiset_id = "000019"
 file_path   = 'sub-EC2/sub-EC2_ses-EC2-B1.nwb'
-# Get the location of the file on DANDI
-with DandiAPIClient() as client:
-    asset = client.get_dandiset(dandiset_id, 'draft').get_asset_by_path(file_path)
-    s3_url = asset.get_content_url(follow_redirects=1, strip_query=True)
-
-# Create a virtual filesystem based on the http protocol and use caching to save accessed data to RAM.
-fs = filesystem("http")
-file_system = fs.open(s3_url, "rb")
-file = File(file_system, mode="r")
-# Open the file with NWBHDF5IO
-io = NWBHDF5IO(file=file, load_namespaces=True)
-
-nwbfile = io.read()
-
+nwbfile     = load_nwbfile(dandiset_id,file_path)
 
 #%%
 lfp = nwbfile.acquisition['ElectricalSeries'].data[:30000,:].T
-
 
 # reorder in 16 x 16 grid
 lfp = lfp.reshape(16,16,-1)
