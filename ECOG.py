@@ -9,58 +9,106 @@ import h5py
 import numpy as np
 import pandas as pd
 from scipy.signal import decimate
-from utils import load_nwbfile
+from utils import *
 
 dandiset_id = "000019"
 file_path   = 'sub-EC2/sub-EC2_ses-EC2-B89.nwb'
 nwbfile     = load_nwbfile(dandiset_id,file_path)
 
-nwbfile.epochs.to_dataframe()
+nwbfile.trials.to_dataframe()
 
 #%%
 # Identify bad channels
 electrodes   = nwbfile.electrodes.to_dataframe()
 bad_indicies = np.where(electrodes['bad'] == True)
 
-lfp = nwbfile.acquisition['ElectricalSeries'].data[:30_000,:].T
+lfp = nwbfile.acquisition['ElectricalSeries'].data[:,:].T
+
+# make a time vector based on the Fs of 3052
+
+
+Fs   = nwbfile.acquisition['ElectricalSeries'].rate
+T    = (lfp.shape[1]/Fs)+20 # Duration in seconds
+time = np.arange(0, T, 1/Fs)
+
+# truncate time to the length of lfp ont he first dim
+time = time[:lfp.shape[1]]
+
 
 # get the trial strucutre
 trials = nwbfile.trials.to_dataframe()
+df     = pd.DataFrame(columns=['lfp','transition_time','condition'])
 
-# the trial begings at start_time and ends at stop_time in seconds
+for itrial in np.arange(trials.shape[0]):
+    best_fit_start      = np.abs(time - trials.start_time.iloc[itrial])
+    best_fit_end        = np.abs(time - trials.stop_time.iloc[itrial])
+    best_fit_transition = np.abs(time - trials.cv_transition_time.iloc[itrial])
+    # find the index of start and stop
+    start_idx = np.argmin(best_fit_start)
+    end_idx   = np.argmin(best_fit_end)
+    transition_idx = np.argmin(best_fit_transition) - start_idx # relative to onset
+
+    # epoch the data
+    trial = lfp[:,start_idx:end_idx]
+
+    # make dict
+    mydict = {'lfp':trial, 'transition_time':transition_idx,'condition':trials.condition.iloc[itrial]}
+
+    # append to df
+    df = df.append(mydict,ignore_index=True)
 
 
-# get the sam
+# save the df to disk
+df.to_pickle()
 
-# find chanel outlier based on zscore
-def zscore(data):
-    return (data - np.mean(data)) / np.std(data)
+#%% compute the ERP for the condition raa
 
 
-zscore_data  = zscore(lfp)
-zscore_data  = np.nanmean(zscore_data, axis=1)
-zscore_data  = np.abs(zscore_data)
-bad_indicies = np.where(zscore_data > 3)[0]
 
+df_subcond = df[df.condition=='shee']
+# get all the lengths
+lengths = []
+for i,row in enumerate(df_subcond.iterrows()):
+    row = row[1]
+    lengths.append(row.lfp.shape[1])
+
+# find minimum length
+maxlength = np.max(lengths)
+
+for i,row in enumerate(df_subcond.iterrows()):
+    row = row[1]
+    thistrial = row.lfp
+    # subtract the mean
+    thistrial = thistrial -  np.nanmean(thistrial,axis=1)[:,None]
+    if thistrial.shape[1] < maxlength:
+        # pad with zeros
+        pads      = np.ones((256,maxlength - thistrial.shape[1])) * np.nan
+        thistrial = np.column_stack((thistrial,pads))
+    if i == 0:
+        erp = thistrial
+    else:
+        erp = np.nansum(np.dstack((erp,thistrial)),2)
+
+
+grand_erp = erp/i
+
+plt.plot(grand_erp[:10,:].T)
+#%%
 # make bad channels nan
 lfp[bad_indicies,:] = np.nan
-
 
 # make grid data
 lfp = lfp.reshape(16,16,-1)
 
 
 
-
-
-
+#%%
 
 
 
 
 
 #%%
-lfp = nwbfile.acquisition['ElectricalSeries'].data[:30000,:].T
 
 # reorder in 16 x 16 grid
 lfp = lfp.reshape(16,16,-1)
@@ -71,7 +119,6 @@ lfp = lfp.reshape(16,16,-1)
 # interpolate the electrode based on the surrounding electrodes
 lfp[12,9,:] = lfp[12,10,:]
 
-plt.imshow(lfp[:,:,1])
 
 
 import numpy as np
@@ -105,12 +152,10 @@ def zscore_3d(array_3d):
 # Assuming data_3d is your 3D numpy array with shape (16, 16, time)
 # fs is your sampling frequency
 
-fs  = 1000  # Example: Sampling frequency is 100 Hz
 lfp = zscore_3d(lfp)
 lfp = decimate(lfp, 3, axis=2)
-lfp = bandpass_filter_3d(lfp, 8, 12, fs)
+lfp = bandpass_filter_3d(lfp, 15, 25, Fs)
 
-plt.plot(lfp[0,0,:])
 
 #%%
 electrodes = nwbfile.electrodes.to_dataframe()
@@ -119,7 +164,7 @@ electrodes = nwbfile.electrodes.to_dataframe()
 plt.scatter(electrodes.y, electrodes.z, s=1)
 plt.scatter(electrodes.y[16], electrodes.z[16], s=10)
 
-#%%
+
 
 # %%
 import numpy as np
@@ -134,33 +179,59 @@ import time
 import scipy.ndimage as ndimage
 
 
-fig, ax = plt.subplots()
-ims = []
-# set colormap to bte RdBu
-plt.set_cmap('RdBu')
+fig_lfp, ax_lfp     = plt.subplots()
+fig_phase, ax_phase = plt.subplots()
 
-time2plot = np.arange(2200,2800)
-# find the min and max of all frames for coloraxis
-vmin = np.nanmin(lfp[:,:,time2plot])
-vmax = np.nanmax(lfp[:,:,time2plot])
+ims_phase = []
+ims_lfp   = []
 
-for i in np.arange(2200,2800):  # 100 frames
+
+
+data = df.iloc[0].lfp
+
+data = data.reshape(16,16,-1)
+data = zscore_3d(data)
+data = bandpass_filter_3d(lfp, 15, 25, Fs)
+vmin = np.nanmin(data)
+vmax = np.nanmax(data)
+
+for i in range(data.shape[2]):  # 100 frames
     # smooth the current matrix frame
-    frame = lfp[:,:,i]
-    frame = ndimage.gaussian_filter(frame, sigma=0.5)
+    frame = data[:,:,i]
+    phase = np.angle(hilbert(frame))
 
-    im = plt.imshow(frame)
+    #frame = ndimage.gaussian_filter(frame, sigma=0.5)
+    im_phase = ax_phase.imshow(phase,vmin=-np.pi, vmax=np.pi,cmap='twilight')
+    ims_phase.append([im_phase])
+
+    im_lfp   = ax_lfp.imshow(frame,vmin=vmin,vmax=vmax,cmap='viridis')
+    ims_lfp.append([im_lfp])
+
+
+ani_lfp   = animation.ArtistAnimation(fig_lfp, ims_lfp, interval=50, blit=True,repeat_delay=500)
+ani_phase = animation.ArtistAnimation(fig_phase, ims_phase, interval=50, blit=True,repeat_delay=500)
+
+writer = PillowWriter(fps=50)
+
+ani_lfp.save("lfp_demo_8-12.gif", writer=writer)
+ani_phase.save("phase_demo_8-12.gif", writer=writer)
+
+
     
-    # set the coloraxis to be the same for all plots
-    plt.clim(vmin, vmax)
-    ims.append([im])
-
-ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True,
-                                repeat_delay=500)
-
-writer = PillowWriter(fps=30)
-ani.save("demo_8-12.gif", writer=writer)
-
     
-    
+# %%
+from scipy.signal import hilbert
+
+
+
+data = df.iloc[0].lfp
+# find the min and max of all frames for coloraxis
+
+data = data.reshape(16,16,-1)
+data = zscore_3d(data)
+data = bandpass_filter_3d(lfp, 16, 23, Fs)
+
+# get the phase of the data via hilbert
+data_a = 
+phase  = np.angle(hilbert(data))
 # %%

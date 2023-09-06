@@ -5,9 +5,11 @@ from h5py import File
 from pynwb import NWBHDF5IO
 import matplotlib.pyplot as plt
 import h5py
-import numpy as np
 import pandas as pd
 from scipy.signal import decimate
+import numpy as np
+from scipy.signal import butter, lfilter
+
 
 
 
@@ -32,3 +34,27 @@ def zscore(data):
     return (data - np.mean(data)) / np.std(data)
 
 
+
+def bandpass_filter(data, lowcut, highcut, fs, order=5):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return lfilter(b, a, data)
+
+def bandpass_filter_3d(array_3d, lowcut, highcut, fs, order=2):
+    filtered_data = np.empty_like(array_3d)
+    for i in range(array_3d.shape[0]):
+        for j in range(array_3d.shape[1]):
+            filtered_data[i, j] = bandpass_filter(array_3d[i, j], lowcut, highcut, fs, order)
+    
+    return filtered_data
+
+
+def zscore_3d(array_3d):
+    zscore_data = np.empty_like(array_3d)
+    for i in range(array_3d.shape[0]):
+        for j in range(array_3d.shape[1]):
+            zscore_data[i, j] = zscore(array_3d[i, j])
+    
+    return zscore_data
