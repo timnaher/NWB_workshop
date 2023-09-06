@@ -1,3 +1,4 @@
+#%%
 from dandi.dandiapi import DandiAPIClient
 from fsspec.implementations.cached import CachingFileSystem
 from fsspec import filesystem
@@ -13,7 +14,6 @@ from utils import *
 dandiset_id = "000019"
 file_path   = 'sub-EC2/sub-EC2_ses-EC2-B89.nwb'
 nwbfile     = load_nwbfile(dandiset_id,file_path)
-
 nwbfile.trials.to_dataframe()
 
 #%%
@@ -58,4 +58,5 @@ for itrial in np.arange(trials.shape[0]):
 
 
 # save the df to disk
-df.to_pickle()
+df.to_pickle('df.pkl')
+# %%
