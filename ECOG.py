@@ -63,8 +63,6 @@ df.to_pickle()
 
 #%% compute the ERP for the condition raa
 
-
-
 df_subcond = df[df.condition=='shee']
 # get all the lengths
 lengths = []
@@ -191,7 +189,7 @@ data = df.iloc[0].lfp
 
 data = data.reshape(16,16,-1)
 data = zscore_3d(data)
-data = bandpass_filter_3d(lfp, 15, 25, Fs)
+data = bandpass_filter_3d(data, 15, 25, Fs)
 vmin = np.nanmin(data)
 vmax = np.nanmax(data)
 

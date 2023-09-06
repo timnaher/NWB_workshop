@@ -24,7 +24,7 @@ data = df.iloc[0].lfp
 
 data = data.reshape(16,16,-1)
 data = zscore_3d(data)
-data = bandpass_filter_3d(lfp, 15, 25, Fs)
+data = bandpass_filter_3d(data, 15, 25, Fs)
 vmin = np.nanmin(data)
 vmax = np.nanmax(data)
 
@@ -46,7 +46,7 @@ ani_phase = animation.ArtistAnimation(fig_phase, ims_phase, interval=50, blit=Tr
 
 writer = PillowWriter(fps=50)
 
-ani_lfp.save("lfp_demo_8-12.gif", writer=writer)
+ani_lfp.save(    "lfp_demo_8-12.gif", writer=writer)
 ani_phase.save("phase_demo_8-12.gif", writer=writer)
 
 
