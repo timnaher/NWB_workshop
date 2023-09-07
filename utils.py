@@ -9,6 +9,11 @@ import pandas as pd
 from scipy.signal import decimate
 import numpy as np
 from scipy.signal import butter, lfilter, hilbert
+import matplotlib.animation as animation
+from matplotlib.animation import PillowWriter
+from IPython.display import display, clear_output
+import time
+import scipy.ndimage as ndimage
 
 
 
