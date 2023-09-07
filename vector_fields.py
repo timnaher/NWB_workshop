@@ -12,6 +12,8 @@ import scipy.ndimage as ndimage
 from utils import *
 import numpy as np
 from scipy.signal import convolve2d
+from tqdm.notebook import tqdm  # if you're in a Jupyter Notebook
+
 def frameByFrameHornSchunck(im1, im2, alpha=1, ite=100, uInitial=None, vInitial=None):
     if uInitial is None:
         uInitial = np.zeros(im1.shape)
@@ -66,26 +68,21 @@ def opticalFlowHS(data, alpha=1, max_iter=100, wait_bar=True):
     return x, y, u, v
 
 #%%
-from tqdm.notebook import tqdm  # if you're in a Jupyter Notebook
 
 sessions = ['B105','B15','B76','B8','B89','B9','B1']
 Fs       = 3051.7578
 band = 'beta'
-if band == 'beta':
-    low_bound, up_bound = 12, 20
-elif band == 'alpha':
-    low_bound, up_bound = 7, 11
+
 
 for ses in sessions:
     print(ses)
     # load the data
-    df = pd.read_pickle(f'df_{ses}.pkl')
+    df = pd.read_pickle(f'df_{ses}_{band}.pkl')
 
     df['u'] = None
     df['v'] = None
     for j in tqdm(range(len(df))):
         data = zscore_3d(df.iloc[j].lfp.reshape(16,16,-1))
-        data = bandpass_filter_3d(data , low_bound, up_bound, Fs)
         x, y, u, v = opticalFlowHS(data, alpha=1, max_iter=100, wait_bar=False)
 
         # save u and v in the dataframe
