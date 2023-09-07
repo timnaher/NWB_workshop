@@ -8,7 +8,7 @@ import h5py
 import pandas as pd
 from scipy.signal import decimate
 import numpy as np
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, hilbert
 
 
 
