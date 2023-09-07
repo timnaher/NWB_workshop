@@ -11,6 +11,7 @@ from sklearn.linear_model import LogisticRegression
 
 # load the data
 df = pd.read_pickle('grand_df_beta.pkl')
+print('done loading data')
 
 #%% generate features
 # here we want to see if we can classify whether a vector field is pre or post transition
@@ -38,11 +39,10 @@ for j,row in enumerate(df.iterrows()):
         X = feat if j == 0 else np.row_stack((X,feat))
         y = np.array([i]) if j == 0 else np.row_stack((y,np.array([i])))
     
-
-
 # split the data into train and test
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
 
+print('start classification')
 
 # Your actual model
 model             = LogisticRegression(max_iter=1000)
@@ -56,6 +56,7 @@ n_permutations      = 100
 count               = 0
 permuted_accuracies = []  # List to store accuracies from each permutation
 
+print('starting permutation test')
 for jj in range(n_permutations):
     print(jj)
     # Permute the labels
