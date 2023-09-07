@@ -65,6 +65,10 @@ def zscore_3d(array_3d):
 #___________ plot tools ___________
 
 def plot_movie(data,name):
+    fig_lfp, ax_lfp     = plt.subplots()
+    fig_phase, ax_phase = plt.subplots()
+    ims_phase,ims_lfp   = [],[]
+
     vmin = np.nanmin(data)
     vmax = np.nanmax(data)
 
