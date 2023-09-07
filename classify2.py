@@ -15,13 +15,24 @@ print('done loading data')
 
 #%% generate features
 # here we want to see if we can classify whether a vector field is pre or post transition
-
 for j,row in enumerate(df.iterrows()):
-    row = row[1]
+    row        = row[1]
+    transition = row['transition_time']
 
     for i,loc in enumerate(['pre','post']):
-        u = row[f'u_{loc}'][0]
-        v = row[f'v_{loc}'][0]
+        #u = row[f'u_{loc}'][0]
+        #v = row[f'v_{loc}'][0]
+
+
+        U_pre = row.u[0][:,:,300:transition]
+        V_pre = row.v[0][:,:,300:transition]
+        U_post = row.u[0][:,:,transition:]
+        V_post = row.v[0][:,:,transition:]
+
+        u = np.nanmean(U_pre,axis=2) if loc == 'pre' else np.nanmean(U_post,axis=2)
+        v = np.nanmean(V_pre,axis=2) if loc == 'pre' else np.nanmean(V_post,axis=2)
+
+  
 
         # compute the angle based on u and v
         angle = np.arctan2(v,u)
@@ -36,12 +47,16 @@ for j,row in enumerate(df.iterrows()):
                                #curl.flatten()))
         #feat = np.concatenate((divergence.flatten(),curl.flatten()))
         #feat = u.flatten()
-        X = feat if j == 0 else np.row_stack((X,feat))
-        y = np.array([i]) if j == 0 else np.row_stack((y,np.array([i])))
+        if np.any(np.isnan(feat)):
+            continue
+        else:
+            X = feat if j == 0 else np.row_stack((X,feat))
+            y = np.array([i]) if j == 0 else np.row_stack((y,np.array([i])))
     
 # split the data into train and test
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
 
+#%%
 print('start classification')
 
 # Your actual model
@@ -56,6 +71,7 @@ n_permutations      = 100
 count               = 0
 permuted_accuracies = []  # List to store accuracies from each permutation
 
+#%%
 print('starting permutation test')
 for jj in range(n_permutations):
     print(jj)
