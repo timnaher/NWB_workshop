@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
 
 # load the data
 df = pd.read_pickle('grand_df_beta.pkl')
