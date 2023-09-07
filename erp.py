@@ -1,8 +1,16 @@
-
+#%%
+import pandas as pd
+import numpy as np
+from sklearn.svm import SVC
+from sklearn import svm
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
 
 # load the df
+df = pd.read_pickle('grand_df.pkl')
 
-df_subcond = df[df.condition=='shee']
+df_subcond = df[df.condition=='raa']
 # get all the lengths
 lengths = []
 for i,row in enumerate(df_subcond.iterrows()):
@@ -28,5 +36,5 @@ for i,row in enumerate(df_subcond.iterrows()):
 
 
 grand_erp = erp/i
-
 plt.plot(grand_erp[:10,:].T)
+# %%
