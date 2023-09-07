@@ -86,14 +86,14 @@ def plot_movie(data,name):
         im_phase = ax_phase.imshow(phase,vmin=-np.pi, vmax=np.pi,cmap='twilight')
         ims_phase.append([im_phase])
 
-        im_lfp   = ax_lfp.imshow(frame,vmin=vmin,vmax=vmax,cmap='viridis')
+        im_lfp   = ax_lfp.imshow(frame,vmin=vmin,vmax=vmax,cmap='RdBu')
         ims_lfp.append([im_lfp])
 
 
     ani_lfp   = animation.ArtistAnimation(fig_lfp, ims_lfp, interval=50, blit=True,repeat_delay=500)
     ani_phase = animation.ArtistAnimation(fig_phase, ims_phase, interval=50, blit=True,repeat_delay=500)
 
-    writer = PillowWriter(fps=50)
+    writer = PillowWriter(fps=30)
 
     ani_lfp.save(    f"lfp_{name}.gif", writer=writer)
     ani_phase.save(f"phase_{name}.gif", writer=writer)
