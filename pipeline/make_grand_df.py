@@ -15,105 +15,109 @@ from utils import *
 df_glob      = pd.DataFrame()
 sessions    = ['B105','B15','B76','B8','B89','B9','B1']
 dandiset_id = "000019"
+sub        = 'EC2'
 
 for ses in sessions:
-    file_path   = f'sub-EC2/sub-EC2_ses-EC2-{ses}.nwb'
+    print(ses)
+    file_path   = f'sub-{sub}/sub-{sub}_ses-{sub}-{ses}.nwb'
     nwbfile     = load_nwbfile(dandiset_id,file_path)
     electrodes  = nwbfile.electrodes.to_dataframe()
-    df_sub      = pd.read_pickle(f'df_{ses}vecfields_beta.pkl')
+
+
+    df_sub      = pd.read_pickle(f'df_{ses}.pkl')
     df_glob     = pd.concat([df_glob, df_sub], ignore_index=True)
 
-df_glob.to_pickle('grand_df_beta.pkl')
+df_glob.to_pickle(f'/home/jovyan/NWB_workshop/data/grand_df_{sub}.pkl')
 
-#df        = df[:200]
-#%% generate data for CEBRA
-import sys
-import numpy as np
-import matplotlib.pyplot as plt
-import cebra.datasets
-import pandas as pd
-from scipy.signal import hilbert
 
-df['sin'] = None
-df['cos'] = None
 
-for row in df.iterrows():
+#%% Try to get vector fields
+
+df = pd.DataFrame()
+from tqdm import tqdm
+from utils import *
+from flow_utils import *
+
+df['u'] = None
+df['v'] = None
+for j in tqdm(range(len(df_glob))):
+    data = zscore_3d(df.iloc[j].lfp.reshape(16,16,-1))
+    x, y, u, v = opticalFlowHS(data, alpha=1, max_iter=100, wait_bar=False)
+
+    # save u and v in the dataframe
+    df.loc[j, 'u'] = [u]
+    df.loc[j, 'v'] = [v]
+
+
+df['u_pre']     = None
+df['v_pre']     = None
+df['u_post']    = None
+df['v_post']    = None
+df['div_pre']   = None
+df['div_post']  = None
+df['curl_pre']  = None
+df['curl_post'] = None
+
+for row in tqdm(df.iterrows()):
     row = row[1]
-    # compute the angle based on u and v
-    u = row.u[0]
-    v = row.v[0]
-    angle = np.arctan2(v,u)
 
-    # reshape to  256 x time
-    angle = angle.reshape(256,-1)
+    # compute the pre and post transition vector fields
+    u_pre  = np.nanmean(row.u[0][:,:,:row.transition_time],axis=2)
+    v_pre  = np.nanmean(row.v[0][:,:,:row.transition_time],axis=2)
+    u_post = np.nanmean(row.u[0][:,:,row.transition_time:],axis=2)
+    v_post = np.nanmean(row.v[0][:,:,row.transition_time:],axis=2)
 
-    df.loc[row.name,'sin'] = [np.sin(angle)]
-    df.loc[row.name,'cos'] = [np.cos(angle)]
+    # compute the divergence of the vector fields
+    div_pre  = np.gradient(u_pre)[0]  + np.gradient(v_pre)[1]
+    div_post = np.gradient(u_post)[0] + np.gradient(v_post)[1]
+
+    # compute the curl
+    curl_pre  = np.gradient(u_pre)[1]  - np.gradient(v_pre)[0]
+    curl_post = np.gradient(u_post)[1] - np.gradient(v_post)[0]
+
+    # append to the dataframe
+    df.loc[row.name,'u_pre']     = [u_pre]
+    df.loc[row.name,'v_pre']     = [v_pre]
+    df.loc[row.name,'u_post']    = [u_post]
+    df.loc[row.name,'v_post']    = [v_post]
+
+    df.loc[row.name,'div_pre']   = [div_pre]
+    df.loc[row.name,'div_post']  = [div_post]
+
+    df.loc[row.name,'curl_pre']  = [curl_pre]
+    df.loc[row.name,'curl_post'] = [curl_post]
 
 
-#%%
-
-trl_lengths = []
-for i in range(len(df)):
-    trl_length = np.arange(0,np.size(df.sin[i][0],1),1)
-    trl_lengths.append(trl_length)
-df['trial_length'] = trl_lengths
 
 
-consonants = []
-for i in range(len(df)):
-    consonant = df.condition[i][0]
-    consonants.append(consonant)
 
-df['consonant'] = consonants
 
-letter_reps  = []
-binary_reps  = []
-trialID_reps = []
 
-for i in range(len(df)):
-    rep_pre  = df.transition_time[i]
-    rep_post = np.size(df.sin[i][0],1)-(df.transition_time[i])
-    
-    letter_rep = np.concatenate((np.repeat(df.consonant[i],rep_pre), np.repeat(df.vowel[i],rep_post)))
-    letter_reps.append(letter_rep)
-    binary_rep = np.concatenate((np.repeat(1,rep_pre), np.repeat(0,rep_post)))
-    binary_reps.append(binary_rep)
-    trialID_rep = np.repeat(i+1,rep_pre+rep_post)
-    trialID_reps.append(trialID_rep)
 
-df['letter_rep']  = letter_reps
-df['binary_rep']  = binary_reps
-df['trialID_rep'] = trialID_reps
 
-# %% convert the data to a numpy array
-ntrials = 200
 
-for i in range(ntrials):
-    if i == 0:
-        sins     = np.array(df.sin[i][0])
-        coses    = np.array(df.cos[i][0])
-        letters   = np.array(df.letter_rep[i])
-        binaries  = np.array(df.binary_rep[i])
-        trial_lng = np.array(df.trial_length[i])
-    else:
-        sins = np.concatenate((sins,np.array(df.sin[i][0])),axis=1)
-        coses = np.concatenate((coses,np.array(df.cos[i][0])),axis=1)
-        letters = np.concatenate((letters,np.array(df.letter_rep[i])))
-        binaries = np.concatenate((binaries,np.array(df.binary_rep[i])))
-        trial_lng = np.concatenate((trial_lng,np.array(df.trial_length[i])))
 
-letters   = letters[np.newaxis,:]
-binaries  = binaries[np.newaxis,:]
-trial_lng = trial_lng[np.newaxis,:]
+
+
 
 
 # %%
-np.save('sins.npy',sins)
-np.save('coses.npy',coses)
-np.save('binaries.npy',binaries)
-np.save('trial_lng.npy',trial_lng)
-np.save('letters.npy',letters)
+# import logisitic regression
+from sklearn.linear_model import LogisticRegression
+
+clf3 = Pipeline([
+    ('Cov', XdawnCovariances()),
+    ('TS', TSclassifier()) 
+])
 
 
-# %%
+clf3_param_grid = {
+    'Cov__estimator': ['oas'],
+    'Cov__nfilter': [2,4],
+    'TS__clf': [LogisticRegression(C=1), LogisticRegression(C=10), LogisticRegression(C=100), LogisticRegression(C=1000)]
+}
+
+
+for row in df_glob.iterrows():
+    row = row[1]
+    # compute the covariance matrix

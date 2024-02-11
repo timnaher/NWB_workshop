@@ -66,7 +66,7 @@ for ses in sessions:
         transition_idx = np.argmin(best_fit_transition) - start_idx # relative to onset
 
         # epoch the data
-        trial = lfp_filt[:,start_idx:end_idx]
+        trial = lfp[:,start_idx:end_idx]
 
         # make dict
         mydict = {'lfp':trial, 'transition_time':transition_idx,'condition':trials.condition.iloc[itrial]}
@@ -83,6 +83,6 @@ for ses in sessions:
 
     # save the df to disk
     print('saving')
-    df.to_pickle(f'df_{ses}_{band}.pkl')
+    df.to_pickle(f'df_{ses}.pkl')
     print('done saving')
 # %%
