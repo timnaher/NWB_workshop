@@ -25,7 +25,7 @@ for ses in sessions:
 
 df_glob.to_pickle('grand_df_beta.pkl')
 
-df        = df[:200]
+#df        = df[:200]
 #%% generate data for CEBRA
 import sys
 import numpy as np
