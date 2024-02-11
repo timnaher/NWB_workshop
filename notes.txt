@@ -1,0 +1,8 @@
+to to:
+a) preprocessing: add the invalid times. This can be found in the nwb file
+
+
+order of data processing:
+1) The first script that creates the epoched data is called parse_trials
+2)
+

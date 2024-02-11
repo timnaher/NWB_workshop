@@ -12,30 +12,32 @@ from scipy.signal import decimate
 from utils import *
 from scipy.signal import butter, filtfilt
 
-def bandpass_filter_fast(data, lowcut, highcut, fs, order=3):
-    nyq  = 0.5 * fs
-    low  = lowcut / nyq
-    high = highcut / nyq
-    b, a = butter(order, [low, high], btype='band')
-    return filtfilt(b, a, data)
+#def bandpass_filter_fast(data, lowcut, highcut, fs, order=3):
+#    nyq  = 0.5 * fs
+#    low  = lowcut / nyq
+#    high = highcut / nyq
+#    b, a = butter(order, [low, high], btype='band')
+#    return filtfilt(b, a, data)
 
-Fs      = 3051.7578
-band = 'beta'
-if band == 'beta':
-    low_bound, up_bound = 12, 20
-elif band == 'alpha':
-    low_bound, up_bound = 7, 11
+#band = 'alpha'
+#if band == 'beta':
+#    low_bound, up_bound = 12, 20
+#elif band == 'alpha':
+#    low_bound, up_bound = 7, 11
 
 
+Fs          = 3051.7578
 sessions    = ['B105','B15','B76','B8','B89','B9','B1']
 dandiset_id = "000019"
 sub         = 'EC2'
 
 for ses in sessions:
     print(ses)
-    file_path   = f'sub-EC2/sub-EC2_ses-EC2-{ses}.nwb'
-    nwbfile     = load_nwbfile(dandiset_id,file_path)
-    nwbfile.trials.to_dataframe()
+    file_path    = f'sub-EC2/sub-EC2_ses-EC2-{ses}.nwb'
+    nwbfile      = load_nwbfile(dandiset_id,file_path)
+
+    # get all the condition words:
+    words        = np.array([bs.decode('utf-8') for bs in np.array(nwbfile.trials['condition'].data)])
 
     # Identify bad channels
     electrodes   = nwbfile.electrodes.to_dataframe()
@@ -51,12 +53,6 @@ for ses in sessions:
 
     # get the trial strucutre
     trials = nwbfile.trials.to_dataframe()
-
-
-    # filter the data here:
-    print('filtering')
-    lfp_filt = bandpass_filter_fast(lfp,low_bound,up_bound,Fs)
-    print('done filtering')
 
     df     = pd.DataFrame(columns=['lfp','transition_time','condition'])
 
@@ -76,12 +72,13 @@ for ses in sessions:
         mydict = {'lfp':trial, 'transition_time':transition_idx,'condition':trials.condition.iloc[itrial]}
 
         # append to df
-        df = df.append(mydict,ignore_index=True)
+        df = pd.concat([df, pd.DataFrame([mydict])], ignore_index=True)
+
 
 
     # make new conditions based on last 2 letters of word spoken
     df['vowel'] = df.condition.str[-1:]
-    df          = df.assign(id=(df['vowel']).astype('category').cat.codes)
+    #df          = df.assign(id=(df['vowel']).astype('category').cat.codes)
 
 
     # save the df to disk

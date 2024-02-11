@@ -71,7 +71,7 @@ def opticalFlowHS(data, alpha=1, max_iter=100, wait_bar=True):
 
 sessions = ['B105','B15','B76','B8','B89','B9','B1']
 Fs       = 3051.7578
-band = 'beta'
+band     = 'beta'
 
 
 for ses in sessions:
@@ -150,7 +150,6 @@ fig_phase, ax_phase = plt.subplots()
 fig_vec, ax_vec     = plt.subplots()
 
 ims_phase,ims_lfp,ims_vec   = [],[],[]
-
 
 vmin = np.nanmin(data)
 vmax = np.nanmax(data)
